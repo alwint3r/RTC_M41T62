@@ -3,14 +3,15 @@
 
 #include <Wire.h>
 #include "M41T62.h"
-#ifdef __AVR__
- #include <avr/pgmspace.h>
- #define WIRE Wire
-#else
- #define PROGMEM
- #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
- #define WIRE Wire1
-#endif
+
+//#ifdef __AVR__
+// #include <avr/pgmspace.h>
+#define WIRE Wire
+//#else
+// #define PROGMEM
+// #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+// #define WIRE Wire1
+//#endif
 
 /* M41T62 Register Map
  * http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00019860.pdf
@@ -36,16 +37,16 @@
 #define SECONDS_PER_DAY             86400L
 #define SECONDS_FROM_1970_TO_2000   946684800
 
-#if (ARDUINO >= 100)
+//#if (ARDUINO >= 100)
  #include <Arduino.h> // capital A so it is error prone on case-sensitive filesystems
  // Macro to deal with the difference in I2C write functions from old and new Arduino versions.
  #define _I2C_WRITE write
  #define _I2C_READ  read
-#else
- #include <WProgram.h>
- #define _I2C_WRITE send
- #define _I2C_READ  receive
-#endif
+//#else
+// #include <WProgram.h>
+// #define _I2C_WRITE send
+// #define _I2C_READ  receive
+//#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // utility code, some of this could be exposed in the DateTime API if needed
@@ -132,7 +133,7 @@ static uint8_t conv2d(const char* p) {
 DateTime::DateTime (const char* date, const char* time) {
     // sample input: date = "Dec 26 2009", time = "12:34:56"
     yOff = conv2d(date + 9);
-    // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 
+    // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
     switch (date[0]) {
         case 'J': m = date[1] == 'a' ? 1 : date[2] == 'n' ? 6 : 7; break;
         case 'F': m = 2; break;
@@ -159,7 +160,7 @@ DateTime::DateTime (const __FlashStringHelper* date, const __FlashStringHelper* 
     yOff = conv2d(buff + 9);
     // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
     switch (buff[0]) {
-        case 'J': m = buff[1] == 'a' ? 1 : m = buff[2] == 'n' ? 6 : 7; break;
+        case 'J': m = (buff[1] == 'a') ? 1 : ((buff[2] == 'n') ? 6 : 7); break;
         case 'F': m = 2; break;
         case 'A': m = buff[2] == 'r' ? 4 : 8; break;
         case 'M': m = buff[2] == 'r' ? 3 : 5; break;
@@ -175,7 +176,7 @@ DateTime::DateTime (const __FlashStringHelper* date, const __FlashStringHelper* 
     ss = conv2d(buff + 6);
 }
 
-uint8_t DateTime::dayOfWeek() const {    
+uint8_t DateTime::dayOfWeek() const {
     uint16_t day = date2days(yOff, m, d);
     return (day + 6) % 7; // Jan 1, 2000 is a Saturday, i.e. returns 6
 }
@@ -284,7 +285,7 @@ void RTC_M41T62::adjust(const DateTime& dt) {
 
 DateTime RTC_M41T62::now() {
   WIRE.beginTransmission(M41T62_ADDRESS);
-  WIRE._I2C_WRITE(1);	
+  WIRE._I2C_WRITE(1);
   WIRE.endTransmission();
 
   WIRE.requestFrom(M41T62_ADDRESS, 7, 1); // 7
@@ -304,7 +305,7 @@ M41T62SqwPinMode RTC_M41T62::readSqwPinMode() {
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_SQWFQ_DOW);
   WIRE.endTransmission();
-  
+
   WIRE.requestFrom(M41T62_ADDRESS, 1);
   mode = WIRE._I2C_READ() >> 4;
   return static_cast<M41T62SqwPinMode>(mode);
@@ -318,18 +319,18 @@ void RTC_M41T62::writeSqwPinMode(M41T62SqwPinMode mode) {
   WIRE.endTransmission();
   WIRE.requestFrom(M41T62_ADDRESS, 1);
   currentByte = WIRE._I2C_READ();
-  
+
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_SQWFQ_DOW);
   WIRE._I2C_WRITE((currentByte & 0x07) | (mode << 4));
   WIRE.endTransmission();
-  
+
   // Flip SQW Enable bit in register M41T62_SQWEN_AMO
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_SQWEN_AMO);
   WIRE.endTransmission();
   WIRE.requestFrom(M41T62_ADDRESS, 1);
-  
+
   if (mode == 0){ // Disable
     bitWrite(currentByte,6,0);
   }else{ // Enable
@@ -365,7 +366,7 @@ void RTC_M41T62::alarmEnable(bool onOff){
 
 void RTC_M41T62::alarmRepeat(int mode){ // set alarm repeat mode
   int byte1, byte2, byte3, byte4;
-  
+
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_ADOM);
   WIRE.endTransmission();
@@ -374,7 +375,7 @@ void RTC_M41T62::alarmRepeat(int mode){ // set alarm repeat mode
   byte2 = WIRE._I2C_READ();
   byte3 = WIRE._I2C_READ();
   byte4 = WIRE._I2C_READ();
-  
+
   switch(mode){
     case 1: // once per second
         bitWrite(byte4,7,1);
@@ -426,7 +427,7 @@ void RTC_M41T62::alarmRepeat(int mode){ // set alarm repeat mode
 
 int RTC_M41T62::alarmRepeat(){ // return alarm repeat mode
   int byte1, byte2, byte3, byte4, mode = 0, retVal = 0;
-  
+
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_ADOM);
   WIRE.endTransmission();
@@ -440,7 +441,7 @@ int RTC_M41T62::alarmRepeat(){ // return alarm repeat mode
   bitWrite(mode,2,bitRead(byte2,7));
   bitWrite(mode,3,bitRead(byte1,7));
   bitWrite(mode,4,bitRead(byte1,6));
-  
+
   switch(mode) {
     case 31: retVal = 1; break; // once per second
     case 30: retVal = 2; break; // once per minute
@@ -469,7 +470,7 @@ void RTC_M41T62::alarmSet(const DateTime& dt) {
 int RTC_M41T62::checkFlags(){
   // Returns 1 if Alarm flag is set, 0 if not. Ignores watchdog & oscillator fail
   int byte1;
-  
+
   WIRE.beginTransmission(M41T62_ADDRESS);
   WIRE._I2C_WRITE(M41T62_FLAGS);
   WIRE.endTransmission();
@@ -507,7 +508,7 @@ DateTime RTC_Millis::now() {
 
 void RTC_M41T62::printAllBits(){
   WIRE.beginTransmission(M41T62_ADDRESS);
-  WIRE._I2C_WRITE(0);	
+  WIRE._I2C_WRITE(0);
   WIRE.endTransmission();
 
   WIRE.requestFrom(M41T62_ADDRESS, 16);
